@@ -146,7 +146,7 @@ contract CookieJar is AccessControl, SchemaResolver {
         emit WithdrawalMade(msg.sender, _amount, _note, withdrawals.length - 1, withdrawAttestUid);
     }
 
-    // amount - number in human units, e.g 1 means 1 USD, 10 means 10 USD
+    // amount - number in human units, e.g 1 means 1 USD, 10 means 10 USD etc.
     function withdrawNativeWithPyth(int256 _amount, string memory _note, bytes[] calldata priceUpdate) external onlyRole(DAO_MEMBER_ROLE) {
         // require(block.timestamp >= lastWithdrawalTime[msg.sender] + cooldownPeriod, "Cooldown period not elapsed");
         // require(_amount <= withdrawalLimit, "Amount exceeds withdrawal limit");
@@ -192,22 +192,15 @@ contract CookieJar is AccessControl, SchemaResolver {
         emit WithdrawalMade(msg.sender, uint256(_amount), _note, withdrawals.length - 1, withdrawAttestUid);
     }
 
-    function depositNative(string memory _note) external payable onlyRole(DAO_MEMBER_ROLE) {
-        require(msg.value > 0, "Amount must be greater than 0");
-
-        uint256 _amount = msg.value;
-        // // Refund excess ETH if any
-        // if (_amount > amountEth) {
-        //     payable(msg.sender).transfer(msg.value - amountEth);
-        // }
-
+    // Internal function to handle deposit logic
+    function _depositNative(uint256 _amount, string memory _note) internal {
         deposits.push(Deposit(msg.sender, _amount, _note, block.timestamp));
 
         bytes32 depositAttestUid = _eas.attest(
             AttestationRequest({
                 schema: depositEasSchema,
                 data: AttestationRequestData({
-                    recipient: address(this), // Cookie Jar itself is recepient
+                    recipient: address(this), // Cookie Jar itself is recipient
                     expirationTime: NO_EXPIRATION_TIME, // No expiration time
                     revocable: false,
                     refUID: EMPTY_UID, // No references UI
@@ -220,16 +213,30 @@ contract CookieJar is AccessControl, SchemaResolver {
         emit DepositMade(msg.sender, _amount, _note, deposits.length - 1, depositAttestUid);
     }
 
+    // External function for direct native deposits
+    function depositNative(uint256 _amount, string memory _note) external payable onlyRole(DAO_MEMBER_ROLE) {
+        require(_amount > 0, "Amount must be greater than 0");
+        require(msg.value >= _amount, "Msg.value must be greater or equal than amount");
+
+        // Refund excess native token if any
+        if (msg.value > _amount) {
+            payable(msg.sender).transfer(msg.value - _amount);
+        }
+
+        _depositNative(_amount, _note);
+    }
+
+    // amount - number in human units, e.g 1 means 1 USD, 10 means 10 USD etc.
     function depositNativeWithPyth(int256 _amount, string memory _note, bytes[] calldata priceUpdate) external payable onlyRole(DAO_MEMBER_ROLE) {
         require(msg.value > 0, "Amount must be greater than 0");
 
         uint fee = pyth.getUpdateFee(priceUpdate);
-        // ~ Update price feeds using the contract's balance ~
-        (bool success, ) = address(pyth).call{value: fee}(
+        // Update price feeds using the contract's balance
+        (bool success1, ) = address(pyth).call{value: fee}(
             abi.encodeWithSignature("updatePriceFeeds(bytes[])", priceUpdate)
         );
-        require(success, "Price feed update failed");
-        // pyth.updatePriceFeeds{ value: fee }(priceUpdate);
+        require(success1, "Price feed update failed");
+
         PythStructs.Price memory priceData = pyth.getPrice(priceFeedId);
 
         require(priceData.price > 0, "Invalid ETH/USD price");
@@ -237,31 +244,15 @@ contract CookieJar is AccessControl, SchemaResolver {
         int256 nativeTokenPrice = int256(priceData.price);
         uint256 amountNative = uint256(_amount * 1e26 / nativeTokenPrice);
 
-        require(msg.value >= amountNative, "Insufficient funds in msg.value");
+        require(msg.value >= amountNative + fee, "Insufficient funds in msg.value");
 
         // Refund excess native token if any
-        if (msg.value > amountNative) {
-            payable(msg.sender).transfer(msg.value - amountNative);
+        if (msg.value > amountNative + fee) {
+            payable(msg.sender).transfer(msg.value - amountNative - fee);
         }
 
-        deposits.push(Deposit(msg.sender, amountNative, _note, block.timestamp));
-
-        bytes memory encodedData = abi.encode(msg.sender, deposits.length - 1, amountNative, _note);
-        bytes32 depositAttestUid = _eas.attest(
-            AttestationRequest({
-                schema: depositEasSchema,
-                data: AttestationRequestData({
-                    recipient: address(this), // Cookie Jar itself is recepient
-                    expirationTime: NO_EXPIRATION_TIME, // No expiration time
-                    revocable: false,
-                    refUID: EMPTY_UID, // No references UI
-                    data: encodedData,
-                    value: 0 // No value/ETH
-                })
-            })
-        );
-        
-        emit DepositMade(msg.sender, amountNative, _note, deposits.length - 1, depositAttestUid);
+        // Use the internal function to handle the deposit
+        _depositNative(amountNative, _note);
     }
 
     // function withdrawUsd(uint256 _amount, string memory _note) external onlyRole(DAO_MEMBER_ROLE) {
@@ -293,7 +284,7 @@ contract CookieJar is AccessControl, SchemaResolver {
     function voteOnWithdraw(uint256 _withdrawalId, bool _isUpvote) external onlyRole(DAO_MEMBER_ROLE) {
         require(_withdrawalId < withdrawals.length, "Invalid withdrawal ID");
 
-        // Remove last vote if exist.
+        // ~ Remove last vote if exist ~
         if (lastVote[msg.sender][_withdrawalId].uid != bytes32(0)) {
             Vote memory _lastVote = lastVote[msg.sender][_withdrawalId];
             require(_lastVote.isUpvote != _isUpvote, "Same vote again");
