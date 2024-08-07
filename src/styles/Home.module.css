@@ -100,3 +100,41 @@
     flex-direction: column;
   }
 }
+
+/* Add this to your existing styles or create a new CSS file */
+
+.modalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  max-width: 400px;
+  margin: auto;
+}
+
+.modalLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modalInput {
+  padding: 8px;
+  font-size: 16px;
+}
+
+.modalButton {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  background-color: #0070f3;
+  color: #fff;
+  margin-right: 10px;
+}
+
+.modalButtonCancel {
+  background-color: #eaeaea;
+  color: #333;
+}

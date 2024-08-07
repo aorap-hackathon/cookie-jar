@@ -2,8 +2,87 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import styles from '../styles/Home.module.css';
+import { useEffect, useState } from 'react';
+import Modal from 'react-modal';
+
+export type Jar = {
+  id: string;
+  name: string;
+  description: string;
+};
 
 const Home: NextPage = () => {
+  const [jars, setJars] = useState<Jar[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [modalIsOpen, setModalIsOpen] = useState<boolean>(false);
+  const [newJar, setNewJar] = useState<{ name: string; description: string, withdrawLimit: number, cooldownPeriod: number }>({
+    name: '',
+    description: '',
+    withdrawLimit: 100,
+    cooldownPeriod: 8,
+  });
+
+  useEffect(() => {
+    const fetchJars = async () => {
+      try {
+        const response = await fetch('/api/jars');
+        if (!response.ok) {
+          throw new Error('Error fetching jars');
+        }
+        const data: Jar[] = await response.json();
+        console.log('data:', data);
+        setJars(data);
+      } catch (err) {
+        setError((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJars();
+  }, []);
+
+  const openModal = () => {
+    setModalIsOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalIsOpen(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewJar((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('/api/jars', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newJar),
+      });
+
+      if (!response.ok) {
+        throw new Error('Error creating jar');
+      }
+
+      const jar: Jar = await response.json();
+      setJars((prevJars) => [jar, ...prevJars]);
+      closeModal();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+
   return (
     <div className={styles.container}>
       <Head>
@@ -17,69 +96,90 @@ const Home: NextPage = () => {
 
       <main className={styles.main}>
         <ConnectButton />
+        <button onClick={openModal} className={styles.button}>
+          Create New Jar
+        </button>
 
-        <h1 className={styles.title}>
-          Welcome to <a href="">RainbowKit</a> + <a href="">wagmi</a> +{' '}
-          <a href="https://nextjs.org">Next.js!</a>
-        </h1>
+        <Modal 
+          isOpen={modalIsOpen} 
+          onRequestClose={closeModal} 
+          ariaHideApp={false} 
+          contentLabel="Create New Jar"
+          className={styles.modalContent}
+        >
+          <h2>Create a New Jar</h2>
+          <form onSubmit={handleSubmit} className={styles.modalContent}>
+            <label className={styles.modalLabel}>
+              Jar Name:
+              <input
+                type="text"
+                name="name"
+                placeholder="Jar Name"
+                value={newJar.name}
+                onChange={handleInputChange}
+                required
+                className={styles.modalInput}
+              />
+            </label>
+            <label className={styles.modalLabel}>
+              Description:
+              <input
+                type="text"
+                name="description"
+                placeholder="Description"
+                value={newJar.description}
+                onChange={handleInputChange}
+                required
+                className={styles.modalInput}
+              />
+            </label>
+            <label className={styles.modalLabel}>
+              Withdraw Limit:
+              <input
+                type="number"
+                name="withdraw-limit"
+                placeholder="Withdraw limit"
+                value={newJar.withdrawLimit}
+                onChange={handleInputChange}
+                required
+                className={styles.modalInput}
+              />
+            </label>
+            <label className={styles.modalLabel}>
+              Cooldown Period (in hours):
+              <input
+                type="number"
+                name="cooldown-period"
+                placeholder="Cooldown period in hours"
+                value={newJar.cooldownPeriod}
+                onChange={handleInputChange}
+                required
+                className={styles.modalInput}
+              />
+            </label>
+            <div>
+              <button type="submit" className={styles.modalButton}>Create</button>
+              <button type="button" onClick={closeModal} className={styles.modalButton + ' ' + styles.modalButtonCancel}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </Modal>
 
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.tsx</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a className={styles.card} href="https://rainbowkit.com">
-            <h2>RainbowKit Documentation &rarr;</h2>
-            <p>Learn how to customize your wallet connection flow.</p>
-          </a>
-
-          <a className={styles.card} href="https://wagmi.sh">
-            <h2>wagmi Documentation &rarr;</h2>
-            <p>Learn how to interact with Ethereum.</p>
-          </a>
-
-          <a
-            className={styles.card}
-            href="https://github.com/rainbow-me/rainbowkit/tree/main/examples"
-          >
-            <h2>RainbowKit Examples &rarr;</h2>
-            <p>Discover boilerplate example RainbowKit projects.</p>
-          </a>
-
-          <a className={styles.card} href="https://nextjs.org/docs">
-            <h2>Next.js Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a
-            className={styles.card}
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-          >
-            <h2>Next.js Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            className={styles.card}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-        <a href="/page">
-          <p>Go to /page</p>
-        </a>
+        {loading ? (
+          <p>Loading...</p>
+        ) : error ? (
+          <p>Error: {error}</p>
+        ) : (
+          <div className={styles.grid}>
+            {jars.map((jar) => (
+              <div key={jar.id} className={styles.card}>
+                <h2>{jar.id} &rarr;</h2>
+              </div>
+            ))}
+          </div>
+        )}
       </main>
-
-      <footer className={styles.footer}>
-        <a href="https://rainbow.me" rel="noopener noreferrer" target="_blank">
-          Made with ❤️ by your frens at 🌈
-        </a>
-      </footer>
     </div>
   );
 };
