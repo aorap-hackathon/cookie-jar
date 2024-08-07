@@ -10,6 +10,7 @@ import { config } from '../wagmi';
 
 const client = new QueryClient();
 
+
 function MyApp({ Component, pageProps }: AppProps) {
   return (
     <WagmiProvider config={config}>
