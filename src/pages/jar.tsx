@@ -10,7 +10,7 @@ const Page = () => {
   const { id, chain } = router.query;
 
 
-  kv.set(address as string, "{id}");
+  kv.set(address as string, id as string);
 
   return (
     <div>
