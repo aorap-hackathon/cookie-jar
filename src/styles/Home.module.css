@@ -138,3 +138,16 @@
   background-color: #eaeaea;
   color: #333;
 }
+
+.verticalAlign {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.verticalAlign > div {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}

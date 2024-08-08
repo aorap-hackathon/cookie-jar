@@ -13,6 +13,7 @@ export const config = getDefaultConfig({
   appName: 'Cookie Jar',
   projectId: 'a0423bd4d5dfb377c736fc030a4b2f93',
   chains: [
+    sepolia,
     baseSepolia,
     optimismSepolia,
     celoAlfajores,
