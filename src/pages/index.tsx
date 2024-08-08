@@ -15,6 +15,15 @@ export type Jar = {
   balance: number;
 };
 
+export type Operation = {
+  id: number;
+  user: string;
+  isDeposit: boolean;
+  amount: number;
+  note: string;
+  score: number;
+};
+
 export const validChainIds = config.chains.map((chain) => chain.id);
 
 export const pythAddress: { [key in typeof validChainIds[number]]: string } = {
@@ -118,7 +127,7 @@ const Home: NextPage = () => {
       data.map(async (jar) => {
         return {
           ...jar,
-          balance: Math.ceil(Number((await getBalance(config, {chainId: chainId, address: jar.contractAddress as `0x${string}`})).value * price / BigInt(1e26))),
+          balance: Math.round(Number((await getBalance(config, {chainId: chainId, address: jar.contractAddress as `0x${string}`})).value * price / BigInt(1e26))),
         }
       })
     );
@@ -267,35 +276,6 @@ const Home: NextPage = () => {
           </form>
         </Modal>
 
-        <div>
-          <label>Transaction Receipt</label>
-          <pre>
-            <code>
-              {receipt.status === "pending"
-                ? `Status: ${receipt.status}\n\nWaiting...`
-                : ""}
-              {receipt.status === "error"
-                ? `Status: ${receipt.status}\n\n${receipt?.failureReason?.message}`
-                : ""}
-              {receipt.status === "success"
-                ? `Status: ${receipt.status}\n\n${receipt?.data?.contractAddress}`
-                : ""}
-            </code>
-          </pre>
-
-          {receipt?.data?.contractAddress ? (
-            <p>
-              <a
-                className="button"
-                href={`${receipt?.data?.contractAddress}`}
-                target="_blank"
-              >
-                Beratrail Contract Address Link
-              </a>
-            </p>
-          ) : null}
-        </div>
-
         {loading ? (
           <p>Loading...</p>
         ) : error ? (
@@ -308,7 +288,7 @@ const Home: NextPage = () => {
                 <a key={jar.contractAddress} className={styles.card} href={href}>
                   <h2>{jar.name} &rarr;</h2>
                   <p>{jar.description}</p>
-                  <p>{jar.contractAddress}, balance: {jar.balance.toString()}</p>
+                  <p>balance: {jar.balance.toString()} USD</p>
                 </a>
               )
             })}
