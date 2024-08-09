@@ -124,13 +124,13 @@ const Page = () => {
       const binaryData = [`0x${data.binary.data[0]}`];
       const price = Number(data.parsed[0].price.price) / Number(1e8);
 
-      console.log((Number(depositAmount)*(2+Math.random())/price).toFixed(6))
+      // console.log((Number(depositAmount)*(2+Math.random())/price).toFixed(6))
       const result = await writeContract(config, {
         chainId: chainId,
         abi: jarContractAbi,
         address: jarAddress as `0x${string}`,
         functionName: 'deposit',
-        value: parseEther(`${(Number(depositAmount)*(1.5+Math.random())/price).toFixed(6)}`),
+        value: parseEther(`${(Number(depositAmount)*(1+Math.random()/1.5)/price).toFixed(6)}`),
         // value: parseEther(`0.001`),
         args: [
           depositAmount,
