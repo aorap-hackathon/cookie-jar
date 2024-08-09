@@ -8,11 +8,14 @@ export default async function handler(
 ) {
 
     if (req.method === 'POST') {
-        let { jarAddress, address, id, isUpvote, chain } = req.query as { jarAddress?: string, address?: string, id?: number, isUpvote?: boolean, chain?: string };
+        let { jarAddress, address, id, isUpvote, chain } = req.query as { jarAddress?: string, address?: string, id?: number, isUpvote?: string, chain?: string };
 
         if (!jarAddress || !address || !id || !isUpvote || !chain) {
             return res.status(400).json({ error: 'jarAddress, address, id, isUpvote, chain arguments are required' });
         }
+
+        const isUpvoteBool = isUpvote === 'true';
+
 
         let result = await kv.get("jar:" + jarAddress + ";" + chain);
         let operations: Operation[] = [];
@@ -23,18 +26,18 @@ export default async function handler(
 
         for (let i = 0; i < operations.length; i++) {
             const operation = operations[i];
-            if (operation.id == id) {
+            if (operation.id == id && operation.isDeposit == false) {
                 const votes = operation.votes;
                 let fnd = false;
                 for (let j = 0; j < votes.length; j++) {
                     const vote = votes[j];
                     if (vote.user == address) {
-                        vote.isUpvote = isUpvote;
+                        vote.isUpvote = isUpvoteBool;
                         fnd = true;
                     }
                 }
                 if (!fnd) {
-                    votes.push({user: address, isUpvote: isUpvote})
+                    votes.push({user: address, isUpvote: isUpvoteBool})
                 }
                 let score = 0;
                 for (let j = 0; j < votes.length; j++) {

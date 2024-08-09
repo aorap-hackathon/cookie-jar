@@ -3,10 +3,12 @@ import { useRouter } from 'next/router';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount, useChainId } from 'wagmi';
 import { parseEther } from 'viem'
+import Head from 'next/head';
 import styles from '../styles/Home.module.css';
 import { writeContract, readContract, getBalance, waitForTransactionReceipt } from '@wagmi/core'
 import { config } from '../wagmi';
 import { validChainIds, jarContractAbi, priceFeedId, Operation } from './index';
+import { isDataView } from 'util/types';
 
 const Page = () => {
   const router = useRouter();
@@ -14,6 +16,10 @@ const Page = () => {
   const chainId = useChainId() as typeof validChainIds[number];
   const { jarAddress, chain } = router.query;
   const [user, setUser] = useState(null);
+  const [jarName, setJarName] = useState('');
+  const [jarDescription, setJarDescription] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isDAOMember, setIsDAOMember] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [jarBalance, setJarBalance] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +28,8 @@ const Page = () => {
   const [depositNote, setDepositNote] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [withdrawNote, setWithdrawNote] = useState('');
+  const [addDAOMember, setAddDAOMember] = useState('');
+  const [removeDAOMember, setRemoveDAOMember] = useState('');
   const [trigger, setTrigger] = useState(0); // State variable to trigger useEffect
   
 
@@ -43,6 +51,48 @@ const Page = () => {
           chainId: chainId,
           address: jarAddress as `0x${string}`,
         })).value);
+
+        const jarName = await readContract(config, {
+          chainId: chainId,
+          abi: jarContractAbi,
+          address: jarAddress as `0x${string}`,
+          functionName: 'name',
+        }) as string;
+        setJarName(jarName);
+        const jarDescription = await readContract(config, {
+          chainId: chainId,
+          abi: jarContractAbi,
+          address: jarAddress as `0x${string}`,
+          functionName: 'description',
+        }) as string;
+        setJarDescription(jarDescription);
+        const isAdmin = await readContract(config, {
+          chainId: chainId,
+          abi: jarContractAbi,
+          address: jarAddress as `0x${string}`,
+          functionName: 'isAdmin',
+          args: [
+            address,
+          ]
+        }) as boolean;
+        setIsAdmin(isAdmin);
+        const isDAOMember = await readContract(config, {
+          chainId: chainId,
+          abi: jarContractAbi,
+          address: jarAddress as `0x${string}`,
+          functionName: 'isDAOMember',
+          args: [
+            address,
+          ]
+        }) as boolean;
+        setIsDAOMember(isDAOMember);
+
+        setDepositAmount('');
+        setWithdrawAmount('');
+        setDepositNote('');
+        setWithdrawNote('');
+        setAddDAOMember('');
+        setRemoveDAOMember('');
 
         setJarBalance(Math.round(result * price));
 
@@ -214,7 +264,75 @@ const Page = () => {
       forceFetchJars();
 
     } catch (error) {
-      console.error('Error withdrawing native token:', error);
+      console.error('Error voting:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addMember = async () => {
+    try {
+      const result = await writeContract(config, {
+        abi: jarContractAbi,
+        address: jarAddress as `0x${string}`,
+        functionName: 'addDAOMember',
+        args: [
+          addDAOMember
+        ],
+      });
+      setLoading(true);
+      await waitForTransactionReceipt(config, {
+        chainId: chainId,
+        hash: result
+      });
+
+      console.log('Add member successful', result);
+    } catch (error) {
+      console.error('Error adding member:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const removeMember = async () => {
+    try {
+      const result = await writeContract(config, {
+        abi: jarContractAbi,
+        address: jarAddress as `0x${string}`,
+        functionName: 'removeDAOMember',
+        args: [
+          removeDAOMember,
+        ],
+      });
+      setLoading(true);
+      await waitForTransactionReceipt(config, {
+        chainId: chainId,
+        hash: result
+      });
+
+      console.log('Remove member successful', result);
+    } catch (error) {
+      console.error('Error removing member:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  const emergencyWithdrawAll = async () => {
+    try {
+      const result = await writeContract(config, {
+        abi: jarContractAbi,
+        address: jarAddress as `0x${string}`,
+        functionName: 'emergencyWithdrawNative',
+      });
+      setLoading(true);
+      await waitForTransactionReceipt(config, {
+        chainId: chainId,
+        hash: result
+      });
+
+      console.log('Emergency withdraw successful', result);
+      forceFetchJars();
+    } catch (error) {
+      console.error('Error emergency withdraw:', error);
     } finally {
       setLoading(false);
     }
@@ -222,45 +340,84 @@ const Page = () => {
 
   return (
     <div>
+      <Head>
+        <title>Cookie Jar</title>
+        <meta
+          content="Cookie Jar"
+          name="description"
+        />
+        <link href="/favicon/favicon.png" rel="icon" type="image/x-icon"/>
+      </Head>
+
       <a href="/">Home</a>
       <ConnectButton />
+      <h1>{jarName}</h1>
+      <h2>{jarDescription}</h2>
       <h1>Balance: {loading ? "..." : jarBalance} USD</h1>
-      <div className={styles.verticalAlign}>
-        <div>
-          <input
-            type="number"
-            placeholder="Amount"
-            value={depositAmount}
-            onChange={(e) => setDepositAmount(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Note"
-            value={depositNote}
-            onChange={(e) => setDepositNote(e.target.value)}
-          />
-          <button onClick={deposit} className={styles.modalButton}>Deposit</button>
-        </div>
-        <div>
-          <input
-            type="number"
-            placeholder="Amount"
-            value={withdrawAmount}
-            onChange={(e) => setWithdrawAmount(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Note"
-            value={withdrawNote}
-            onChange={(e) => setWithdrawNote(e.target.value)}
-          />
-          <button onClick={withdraw} className={styles.modalButton}>Withdraw</button>
-        </div>
+      <div>DAO member {isDAOMember ? "✅" : "❌"}</div>
+      <div>Admin {isAdmin ? "✅" : "❌"}</div>
+      <div>
+        {isDAOMember && <div className={styles.verticalAlign}>
+          <div>
+            <input
+              type="number"
+              placeholder="Amount"
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Note"
+              value={depositNote}
+              onChange={(e) => setDepositNote(e.target.value)}
+            />
+            <button onClick={deposit} className={styles.modalButton}>Deposit</button>
+          </div>
+          <div>
+            <input
+              type="number"
+              placeholder="Amount"
+              value={withdrawAmount}
+              onChange={(e) => setWithdrawAmount(e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Note"
+              value={withdrawNote}
+              onChange={(e) => setWithdrawNote(e.target.value)}
+            />
+            <button onClick={withdraw} className={styles.modalButton}>Withdraw</button>
+          </div>
+        </div>}
+      </div>
+      <div>
+        {isAdmin && <div className={styles.verticalAlign}>
+          <div>
+            <input
+              type="test"
+              placeholder="0x..."
+              value={addDAOMember}
+              onChange={(e) => setAddDAOMember(e.target.value)}
+            />
+            <button onClick={addMember} className={styles.modalButton}>Add member</button>
+          </div>
+          <div>
+            <input
+              type="text"
+              placeholder="0x..."
+              value={removeDAOMember}
+              onChange={(e) => setRemoveDAOMember(e.target.value)}
+            />
+            <button onClick={removeMember} className={styles.modalButton}>Remove member</button>
+          </div>
+          <div>
+            <button onClick={emergencyWithdrawAll} className={styles.modalButton}>Emergency withdraw all</button>
+          </div>
+        </div>}
       </div>
       <div>
         {loading && <p>Loading...</p>}
       </div>
-      
       <div className={styles.verticalAlign}>
         {operations.map((operation) => {
           return (
@@ -269,15 +426,15 @@ const Page = () => {
               <p>user: {operation.user}</p>
               <p>amount: {operation.amount} USD</p>
               <p>{operation.note}</p>
-              {!operation.isDeposit && (
+              {!operation.isDeposit && <p>score: {operation.score}</p>}
+              {isDAOMember && !operation.isDeposit && (
                 <div>
-                  <p>score: {operation.score}</p>
-                  <button onClick={() => vote(operation.id, true)}>
-                    +
-                  </button>
-                  <button onClick={() => vote(operation.id, false)}>
-                    -
-                  </button>
+                    <button onClick={() => vote(operation.id, true)}>
+                      +
+                    </button>
+                    <button onClick={() => vote(operation.id, false)}>
+                      -
+                    </button>
                 </div>
               )}
             </div>
