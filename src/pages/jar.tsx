@@ -88,6 +88,7 @@ const Page = () => {
           binaryData,
         ],
       });
+      setLoading(true);
       await waitForTransactionReceipt(config, {
         chainId: chainId,
         hash: result
@@ -97,8 +98,8 @@ const Page = () => {
         chainId: chainId,
         abi: jarContractAbi,
         address: jarAddress as `0x${string}`,
-        functionName: 'getWithdrawalsCount',
-      }))
+        functionName: 'getDepositsCount',
+      })) - 1;
       const operation: Operation = {
         id: id,
         user: String(address),
@@ -106,6 +107,7 @@ const Page = () => {
         amount: Number(depositAmount),
         note: depositNote,
         score: 0,
+        votes: [],
       }
       await fetch(`/api/jars?jarAddress=${jarAddress}&chain=${chainId}`, {
         method: 'POST',
@@ -118,6 +120,8 @@ const Page = () => {
 
     } catch (error) {
       console.error('Error depositing native token:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -127,7 +131,11 @@ const Page = () => {
       const data = await response.json();
       const binaryData = [`0x${data.binary.data[0]}`];
 
-
+      console.log([
+        withdrawAmount,
+        withdrawNote,
+        binaryData,
+      ]);
       const result = await writeContract(config, {
         abi: jarContractAbi,
         address: jarAddress as `0x${string}`,
@@ -138,15 +146,47 @@ const Page = () => {
           binaryData,
         ],
       })
+      setLoading(true);
+      await waitForTransactionReceipt(config, {
+        chainId: chainId,
+        hash: result
+      });
 
       console.log('Native withdrawal successful', result);
+      const id = Number(await readContract(config, {
+        chainId: chainId,
+        abi: jarContractAbi,
+        address: jarAddress as `0x${string}`,
+        functionName: 'getWithdrawalsCount',
+      })) - 1;
+      const operation: Operation = {
+        id: id,
+        user: String(address),
+        isDeposit: false,
+        amount: Number(withdrawAmount),
+        note: withdrawNote,
+        score: 0,
+        votes: [],
+      }
+      await fetch(`/api/jars?jarAddress=${jarAddress}&chain=${chainId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(operation),
+      });
+      forceFetchJars();
+
     } catch (error) {
       console.error('Error withdrawing native token:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const vote = async (id: number, isUpvote: boolean) => {
     try {
+      console.log(id, isUpvote);
       const result = await writeContract(config, {
         abi: jarContractAbi,
         address: jarAddress as `0x${string}`,
@@ -155,11 +195,28 @@ const Page = () => {
           id,
           isUpvote,
         ],
-      })
+      });
+      setLoading(true);
+      await waitForTransactionReceipt(config, {
+        chainId: chainId,
+        hash: result
+      });
 
-      console.log('Native withdrawal successful', result);
+      console.log('Vote successful', result);
+
+      await fetch(`/api/vote?jarAddress=${jarAddress}&address=${address}&id=${id}&isUpvote=${isUpvote}&chain=${chainId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+      forceFetchJars();
+
     } catch (error) {
       console.error('Error withdrawing native token:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -182,7 +239,7 @@ const Page = () => {
             value={depositNote}
             onChange={(e) => setDepositNote(e.target.value)}
           />
-          <button onClick={deposit} className={styles.modalButton}>Deposit Native</button>
+          <button onClick={deposit} className={styles.modalButton}>Deposit</button>
         </div>
         <div>
           <input
@@ -197,38 +254,36 @@ const Page = () => {
             value={withdrawNote}
             onChange={(e) => setWithdrawNote(e.target.value)}
           />
-          <button onClick={withdraw} className={styles.modalButton}>Withdraw Native</button>
+          <button onClick={withdraw} className={styles.modalButton}>Withdraw</button>
         </div>
       </div>
-      {loading ? (
-          <p>Loading...</p>
-        ) : error ? (
-          <p>Error: {error}</p>
-        ) : (
-          <div className={styles.verticalAlign}>
-            {operations.map((operation) => {
-              return (
-                <div key={`${operation.isDeposit ? "deposit-" : "withdraw-"}${operation.id}`} className={styles.card}>
-                  <p><b>{operation.isDeposit ? "deposit" : "withdraw"}</b></p>
-                  <p>user: {operation.user}</p>
-                  <p>amount: {operation.amount} USD</p>
-                  <p>{operation.note}</p>
-                  {!operation.isDeposit && (
-                    <div>
-                      <p>score: {operation.score}</p>
-                      <button onClick={() => vote(operation.id, true)}>
-                        +
-                      </button>
-                      <button onClick={() => vote(operation.id, false)}>
-                        -
-                      </button>
-                    </div>
-                  )}
+      <div>
+        {loading && <p>Loading...</p>}
+      </div>
+      
+      <div className={styles.verticalAlign}>
+        {operations.map((operation) => {
+          return (
+            <div key={`${operation.isDeposit ? "deposit-" : "withdraw-"}${operation.id}`} className={styles.card}>
+              <p><b>{operation.isDeposit ? "deposit" : "withdraw"}</b></p>
+              <p>user: {operation.user}</p>
+              <p>amount: {operation.amount} USD</p>
+              <p>{operation.note}</p>
+              {!operation.isDeposit && (
+                <div>
+                  <p>score: {operation.score}</p>
+                  <button onClick={() => vote(operation.id, true)}>
+                    +
+                  </button>
+                  <button onClick={() => vote(operation.id, false)}>
+                    -
+                  </button>
                 </div>
-              )
-            })}
-          </div>
-        )}
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   );
 };

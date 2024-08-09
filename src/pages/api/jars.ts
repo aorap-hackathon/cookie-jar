@@ -70,7 +70,7 @@ export default async function handler(
             await kv.set("jar:" + jarAddress + ";" + chain, [operation, ...operations]);
 
             // Respond with the created jar
-            res.status(200).json(operation);
+            res.status(200).json(operations.length);
         }
     } else {
         res.setHeader('Allow', ['GET', 'POST']);
