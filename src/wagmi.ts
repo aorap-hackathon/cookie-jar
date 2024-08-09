@@ -7,7 +7,8 @@ import {
   baseSepolia,
   optimismSepolia,
   optimism,
-  metalL2
+  metalL2,
+  mode
 } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
@@ -22,6 +23,7 @@ export const config = getDefaultConfig({
     celo,
     optimism,
     // metalL2,
+    // mode,
     // ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === 'true' ? [sepolia] : []),
   ],
   ssr: true,

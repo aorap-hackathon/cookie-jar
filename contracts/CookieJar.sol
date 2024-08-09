@@ -120,7 +120,7 @@ contract CookieJar is AccessControl, SchemaResolver {
         );
         require(success1, "Price feed update failed");
 
-        PythStructs.Price memory priceData = pyth.getPrice(priceFeedId);
+        PythStructs.Price memory priceData = pyth.getPriceUnsafe(priceFeedId);
 
         require(priceData.price > 0, "Invalid native token/USD price");
 
@@ -167,7 +167,7 @@ contract CookieJar is AccessControl, SchemaResolver {
         );
         require(success, "Price feed update failed");
         // pyth.updatePriceFeeds{ value: fee }(priceUpdate);
-        PythStructs.Price memory priceData = pyth.getPrice(priceFeedId);
+        PythStructs.Price memory priceData = pyth.getPriceUnsafe(priceFeedId);
 
         require(priceData.price > 0, "Invalid native token/USD price");
 
@@ -280,12 +280,20 @@ contract CookieJar is AccessControl, SchemaResolver {
         revokeRole(DAO_MEMBER_ROLE, _member);
     }
 
+    function isDAOMember(address _member) external view returns (bool) {
+        return hasRole(DAO_MEMBER_ROLE, _member);
+    }
+
     function addAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     function removeAdmin(address _admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
         revokeRole(DEFAULT_ADMIN_ROLE, _admin);
+    }
+
+    function isAdmin(address _admin) external view returns (bool) {
+        return hasRole(DEFAULT_ADMIN_ROLE, _admin);
     }
         /* --------------------- Membership functions end --------------------- */
 
