@@ -8,7 +8,7 @@ import {
   optimismSepolia,
   optimism,
   metalL2,
-  mode
+  mode,
 } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
