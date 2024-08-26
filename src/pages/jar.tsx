@@ -12,8 +12,13 @@ import {
   waitForTransactionReceipt,
 } from '@wagmi/core';
 import { config } from '../wagmi';
-import { validChainIds, jarContractAbi, priceFeedId, Operation } from './index';
-import { isDataView } from 'util/types';
+
+import {
+  jarContractAbi,
+  priceFeedId,
+  validChainIds,
+} from '../lib/jar-contract-config';
+import { Operation } from '../lib/types';
 
 const Page = () => {
   const router = useRouter();
@@ -140,10 +145,17 @@ const Page = () => {
         address: jarAddress as `0x${string}`,
         functionName: 'deposit',
         value: parseEther(
-          `${((Number(depositAmount) * (1 + Math.random() / 1.5)) / price).toFixed(6)}`,
+          `${(
+            (Number(depositAmount) * (1 + Math.random() / 1.5)) /
+            price
+          ).toFixed(6)}`,
         ),
         // value: parseEther(`0.001`),
-        args: [depositAmount, depositNote, binaryData],
+        args: [
+          BigInt(depositAmount),
+          depositNote,
+          binaryData as `0x${string}`[],
+        ],
       });
       setLoading(true);
       await waitForTransactionReceipt(config, {
@@ -197,7 +209,11 @@ const Page = () => {
         abi: jarContractAbi,
         address: jarAddress as `0x${string}`,
         functionName: 'withdraw',
-        args: [withdrawAmount, withdrawNote, binaryData],
+        args: [
+          BigInt(withdrawAmount),
+          withdrawNote,
+          binaryData as `0x${string}`[],
+        ],
       });
       setLoading(true);
       await waitForTransactionReceipt(config, {
@@ -246,7 +262,7 @@ const Page = () => {
         abi: jarContractAbi,
         address: jarAddress as `0x${string}`,
         functionName: 'voteOnWithdraw',
-        args: [id, isUpvote],
+        args: [BigInt(id), isUpvote],
       });
       setLoading(true);
       await waitForTransactionReceipt(config, {
@@ -280,7 +296,7 @@ const Page = () => {
         abi: jarContractAbi,
         address: jarAddress as `0x${string}`,
         functionName: 'addDAOMember',
-        args: [addDAOMember],
+        args: [addDAOMember as `0x${string}`],
       });
       setLoading(true);
       await waitForTransactionReceipt(config, {
@@ -301,7 +317,7 @@ const Page = () => {
         abi: jarContractAbi,
         address: jarAddress as `0x${string}`,
         functionName: 'removeDAOMember',
-        args: [removeDAOMember],
+        args: [removeDAOMember as `0x${string}`],
       });
       setLoading(true);
       await waitForTransactionReceipt(config, {
@@ -434,7 +450,9 @@ const Page = () => {
         {operations.map((operation) => {
           return (
             <div
-              key={`${operation.isDeposit ? 'deposit-' : 'withdraw-'}${operation.id}`}
+              key={`${operation.isDeposit ? 'deposit-' : 'withdraw-'}${
+                operation.id
+              }`}
               className={styles.card}
             >
               <p>

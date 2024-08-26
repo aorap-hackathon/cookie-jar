@@ -1,6 +1,6 @@
 import { kv } from '@vercel/kv';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { Jar, Operation, Vote } from '../index';
+import { Operation, Jar, Vote } from '../../lib/types';
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,12 +16,10 @@ export default async function handler(
     };
 
     if (!jarAddress || !address || !id || !isUpvote || !chain) {
-      return res
-        .status(400)
-        .json({
-          error:
-            'jarAddress, address, id, isUpvote, chain arguments are required',
-        });
+      return res.status(400).json({
+        error:
+          'jarAddress, address, id, isUpvote, chain arguments are required',
+      });
     }
 
     const isUpvoteBool = isUpvote === 'true';
