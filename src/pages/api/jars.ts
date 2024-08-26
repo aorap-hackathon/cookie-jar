@@ -1,12 +1,12 @@
 import { kv } from '@vercel/kv';
 import { NextApiRequest, NextApiResponse } from 'next';
-import { Jar, Operation } from '../index';
+import { Jar, Operation } from '../../lib/types';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  //   const user = await kv.hgetall('user:me');
+  // const user = await kv.hgetall('user:me');
   // const user = "randomuser";
   // return response.status(200).json(user);
 

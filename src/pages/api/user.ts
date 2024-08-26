@@ -5,7 +5,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse,
 ) {
-  //   const user = await kv.hgetall('user:me');
+  // const user = await kv.hgetall('user:me');
   // const user = "randomuser";
   // return response.status(200).json(user);
 
